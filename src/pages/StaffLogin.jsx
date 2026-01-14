@@ -127,11 +127,6 @@ export default function StaffLogin() {
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-border">
-              <p className="text-xs text-center text-muted-foreground">
-                Demo credentials: admin@gosnappy.io / snappy2024
-              </p>
-            </div>
           </CardContent>
         </Card>
       </main>

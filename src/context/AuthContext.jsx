@@ -4,8 +4,7 @@ const AuthContext = createContext(null);
 
 // Mock staff credentials - in production, this would be handled by a backend
 const STAFF_CREDENTIALS = [
-  { email: "admin@gosnappy.io", password: "snappy2024", name: "Admin User", role: "admin" },
-  { email: "staff@gosnappy.io", password: "snappy2024", name: "Staff Member", role: "staff" },
+  { email: "wilson.wu@gosnappy.io", password: "snappy2026", name: "Wilson Wu", role: "admin" },
 ];
 
 export function AuthProvider({ children }) {
