@@ -93,7 +93,9 @@ export function SubmissionsProvider({ children }) {
       submittedAt: new Date().toISOString(),
       status: "pending",
     };
-    const updated = [newSubmission, ...submissions];
+    // Read directly from localStorage to avoid race conditions
+    const currentSubmissions = JSON.parse(localStorage.getItem("snappy_submissions") || "[]");
+    const updated = [newSubmission, ...currentSubmissions];
     setSubmissions(updated);
     localStorage.setItem("snappy_submissions", JSON.stringify(updated));
     return newSubmission;
