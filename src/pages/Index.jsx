@@ -1,5 +1,4 @@
 import { AmbassadorPreboardingForm } from "@/components/preboarding/AmbassadorPreboardingForm";
-import { Sparkles } from "lucide-react";
 
 const Index = () => {
   return (
@@ -7,9 +6,11 @@ const Index = () => {
       {/* Header */}
       <header className="py-6 px-4 border-b border-border">
         <div className="container max-w-5xl mx-auto flex items-center justify-center gap-3">
-          <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
-          </div>
+          <img
+            src="/ambassador-program/snappy-logo.png"
+            alt="Snappy"
+            className="w-10 h-10 rounded-xl"
+          />
           <h1 className="text-xl font-bold">Snappy Ambassador Program</h1>
         </div>
       </header>
@@ -32,10 +33,18 @@ const Index = () => {
 
       {/* Footer */}
       <footer className="py-6 px-4 border-t border-border mt-auto">
-        <div className="container max-w-5xl mx-auto text-center">
+        <div className="container max-w-5xl mx-auto text-center space-y-2">
           <p className="text-sm text-muted-foreground">
-            Questions? Contact us at ambassadors@snappy.com for assistance.
+            Questions? Contact us at ambassadors@gosnappy.io for assistance.
           </p>
+          <a
+            href="https://gosnappy.io"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-primary hover:underline"
+          >
+            gosnappy.io
+          </a>
         </div>
       </footer>
     </div>

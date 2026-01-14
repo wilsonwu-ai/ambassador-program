@@ -5,7 +5,7 @@ import { Checkbox } from "@/components/ui/Checkbox";
 import { Button } from "@/components/ui/Button";
 import { FileUpload } from "@/components/ui/FileUpload";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/Card";
-import { User, Mail, MapPin, Users, Link2, BarChart3, Upload, Sparkles } from "lucide-react";
+import { User, Link2, BarChart3, Video } from "lucide-react";
 
 const contentTypes = [
   { id: "ugc-brand", label: "UGC/Brand" },
@@ -121,9 +121,11 @@ export function AmbassadorPreboardingForm() {
     return (
       <Card className="max-w-2xl mx-auto animate-fade-in">
         <CardContent className="py-16 text-center">
-          <div className="w-16 h-16 rounded-full gradient-primary mx-auto mb-6 flex items-center justify-center">
-            <Sparkles className="w-8 h-8 text-primary-foreground" />
-          </div>
+          <img
+            src="/ambassador-program/snappy-logo.png"
+            alt="Snappy"
+            className="w-16 h-16 mx-auto mb-6 rounded-xl"
+          />
           <h3 className="text-2xl font-bold mb-3">Application Submitted!</h3>
           <p className="text-muted-foreground max-w-md mx-auto">
             Thank you for applying to the Snappy Ambassador Program. We'll review your application and get back to you within 5-7 business days.
@@ -184,7 +186,7 @@ export function AmbassadorPreboardingForm() {
         <CardHeader>
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary" />
+              <Video className="w-5 h-5 text-primary" />
             </div>
             <div>
               <CardTitle>Type of Content</CardTitle>
