@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSubmissions } from "@/context/SubmissionsContext";
 import { Input } from "@/components/ui/Input";
 import { Textarea } from "@/components/ui/Textarea";
 import { Checkbox } from "@/components/ui/Checkbox";
@@ -16,6 +17,7 @@ const contentTypes = [
 ];
 
 export function AmbassadorPreboardingForm() {
+  const { addSubmission } = useSubmissions();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -109,10 +111,21 @@ export function AmbassadorPreboardingForm() {
 
     setIsSubmitting(true);
 
-    // Simulate API call
+    // Simulate API call delay
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    console.log("Form submitted:", formData);
+    // Save submission to storage
+    addSubmission({
+      name: formData.name,
+      email: formData.email,
+      location: formData.location,
+      contentTypes: formData.contentTypes,
+      otherContentType: formData.otherContentType,
+      socialMediaLinks: formData.socialMediaLinks,
+      followerCount: formData.followerCount,
+      analyticsFiles: formData.analyticsFiles.map((f) => f.name),
+    });
+
     setIsSubmitting(false);
     setIsSubmitted(true);
   };

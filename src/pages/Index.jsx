@@ -1,17 +1,28 @@
+import { Link } from "react-router-dom";
 import { AmbassadorPreboardingForm } from "@/components/preboarding/AmbassadorPreboardingForm";
+import { LogIn } from "lucide-react";
 
 const Index = () => {
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="py-6 px-4 border-b border-border">
-        <div className="container max-w-5xl mx-auto flex items-center justify-center gap-3">
-          <img
-            src="/ambassador-program/snappy-logo.png"
-            alt="Snappy"
-            className="w-10 h-10 rounded-xl"
-          />
-          <h1 className="text-xl font-bold">Snappy Ambassador Program</h1>
+        <div className="container max-w-5xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <img
+              src="/ambassador-program/snappy-logo.png"
+              alt="Snappy"
+              className="w-10 h-10 rounded-xl"
+            />
+            <h1 className="text-xl font-bold">Snappy Ambassador Program</h1>
+          </div>
+          <Link
+            to="/staff/login"
+            className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <LogIn className="w-4 h-4" />
+            <span className="hidden sm:inline">Staff Portal</span>
+          </Link>
         </div>
       </header>
 
