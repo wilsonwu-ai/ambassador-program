@@ -24,6 +24,24 @@ const CONTENT_TYPE_LABELS = {
   "other": "Other",
 };
 
+const FOLLOWER_TIERS = {
+  nano: { label: "Nano (< 10K)", min: 0, max: 10000 },
+  micro: { label: "Micro (10K - 100K)", min: 10000, max: 100000 },
+  macro: { label: "Macro (> 100K)", min: 100000, max: Infinity },
+};
+
+const parseFollowerCount = (str) => {
+  if (!str) return 0;
+  const cleaned = str.replace(/[,\s]/g, "").toLowerCase();
+  const match = cleaned.match(/^([\d.]+)(k|m)?$/);
+  if (!match) return parseInt(cleaned) || 0;
+  const num = parseFloat(match[1]);
+  const suffix = match[2];
+  if (suffix === "k") return num * 1000;
+  if (suffix === "m") return num * 1000000;
+  return num;
+};
+
 const STATUS_CONFIG = {
   pending: { label: "Pending", icon: Clock, color: "text-yellow-600 bg-yellow-50 border-yellow-200" },
   reviewed: { label: "Reviewed", icon: Eye, color: "text-blue-600 bg-blue-50 border-blue-200" },
@@ -32,10 +50,11 @@ const STATUS_CONFIG = {
 };
 
 export function SubmissionsTable() {
-  const { submissions, updateSubmissionStatus } = useSubmissions();
+  const { submissions, updateSubmissionStatus, updateSubmissionAnalytics } = useSubmissions();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [contentTypeFilter, setContentTypeFilter] = useState("all");
+  const [followerTierFilter, setFollowerTierFilter] = useState("all");
   const [sortField, setSortField] = useState("submittedAt");
   const [sortDirection, setSortDirection] = useState("desc");
   const [selectedSubmission, setSelectedSubmission] = useState(null);
@@ -65,6 +84,15 @@ export function SubmissionsTable() {
       result = result.filter((sub) => sub.contentTypes.includes(contentTypeFilter));
     }
 
+    // Apply follower tier filter
+    if (followerTierFilter !== "all") {
+      const tier = FOLLOWER_TIERS[followerTierFilter];
+      result = result.filter((sub) => {
+        const count = parseFollowerCount(sub.followerCount);
+        return count >= tier.min && count < tier.max;
+      });
+    }
+
     // Apply sorting
     result.sort((a, b) => {
       let aVal = a[sortField];
@@ -85,7 +113,7 @@ export function SubmissionsTable() {
     });
 
     return result;
-  }, [submissions, searchQuery, statusFilter, contentTypeFilter, sortField, sortDirection]);
+  }, [submissions, searchQuery, statusFilter, contentTypeFilter, followerTierFilter, sortField, sortDirection]);
 
   const handleSort = (field) => {
     if (sortField === field) {
@@ -207,7 +235,21 @@ export function SubmissionsTable() {
             </select>
           </div>
 
-          {(statusFilter !== "all" || contentTypeFilter !== "all") && (
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-muted-foreground">Follower Tier</label>
+            <select
+              value={followerTierFilter}
+              onChange={(e) => setFollowerTierFilter(e.target.value)}
+              className="h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="all">All Tiers</option>
+              <option value="nano">Nano (&lt; 10K)</option>
+              <option value="micro">Micro (10K - 100K)</option>
+              <option value="macro">Macro (&gt; 100K)</option>
+            </select>
+          </div>
+
+          {(statusFilter !== "all" || contentTypeFilter !== "all" || followerTierFilter !== "all") && (
             <div className="flex items-end">
               <Button
                 variant="ghost"
@@ -215,6 +257,7 @@ export function SubmissionsTable() {
                 onClick={() => {
                   setStatusFilter("all");
                   setContentTypeFilter("all");
+                  setFollowerTierFilter("all");
                 }}
                 className="text-primary hover:text-primary"
               >
@@ -375,14 +418,36 @@ export function SubmissionsTable() {
           submission={selectedSubmission}
           onClose={() => setSelectedSubmission(null)}
           onUpdateStatus={updateSubmissionStatus}
+          onUpdateAnalytics={updateSubmissionAnalytics}
         />
       )}
     </div>
   );
 }
 
-function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
+function SubmissionDetailModal({ submission, onClose, onUpdateStatus, onUpdateAnalytics }) {
   const StatusIcon = STATUS_CONFIG[submission.status]?.icon || Clock;
+  const [analytics, setAnalytics] = useState({
+    engagementRate: submission.analytics?.engagementRate || "",
+    avgViews: submission.analytics?.avgViews || "",
+    primaryDemographic: submission.analytics?.primaryDemographic || "",
+    topLocations: submission.analytics?.topLocations || "",
+    notes: submission.analytics?.notes || "",
+  });
+  const [selectedImage, setSelectedImage] = useState(null);
+
+  const handleAnalyticsChange = (field) => (e) => {
+    setAnalytics((prev) => ({
+      ...prev,
+      [field]: e.target.value,
+    }));
+  };
+
+  const saveAnalytics = () => {
+    onUpdateAnalytics(submission.id, analytics);
+  };
+
+  const analyticsFiles = submission.analyticsFiles || [];
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -390,8 +455,8 @@ function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
         className="absolute inset-0 bg-black/50"
         onClick={onClose}
       />
-      <div className="relative bg-background rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
-        <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between">
+      <div className="relative bg-background rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+        <div className="sticky top-0 bg-background border-b border-border px-6 py-4 flex items-center justify-between z-10">
           <h3 className="text-lg font-bold">Application Details</h3>
           <button
             onClick={onClose}
@@ -403,7 +468,7 @@ function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
 
         <div className="p-6 space-y-6">
           {/* Status */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-wrap items-center justify-between gap-4">
             <span
               className={cn(
                 "inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium rounded-full border",
@@ -499,6 +564,105 @@ function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
             </div>
           </div>
 
+          {/* Analytics Screenshots */}
+          <div className="space-y-3">
+            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+              Analytics Screenshots
+            </h4>
+            {analyticsFiles.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {analyticsFiles.map((file, index) => (
+                  <div
+                    key={index}
+                    className="relative group cursor-pointer rounded-lg overflow-hidden border border-border hover:border-primary transition-colors"
+                    onClick={() => setSelectedImage(file)}
+                  >
+                    {file.dataUrl ? (
+                      <img
+                        src={file.dataUrl}
+                        alt={file.name || `Screenshot ${index + 1}`}
+                        className="w-full h-32 object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-32 bg-muted flex items-center justify-center">
+                        <span className="text-xs text-muted-foreground">{typeof file === 'string' ? file : file.name}</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                      <Eye className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground italic">No screenshots uploaded</p>
+            )}
+          </div>
+
+          {/* Staff Analytics Input */}
+          <div className="space-y-4 p-4 bg-muted/30 rounded-lg border border-border">
+            <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+              Staff Analytics (Manual Entry)
+            </h4>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Engagement Rate</label>
+                <input
+                  type="text"
+                  value={analytics.engagementRate}
+                  onChange={handleAnalyticsChange("engagementRate")}
+                  placeholder="e.g., 4.5%"
+                  className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Avg Views/Post</label>
+                <input
+                  type="text"
+                  value={analytics.avgViews}
+                  onChange={handleAnalyticsChange("avgViews")}
+                  placeholder="e.g., 15,000"
+                  className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Primary Demographic</label>
+                <input
+                  type="text"
+                  value={analytics.primaryDemographic}
+                  onChange={handleAnalyticsChange("primaryDemographic")}
+                  placeholder="e.g., 18-34, Female, 65%"
+                  className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Top Locations</label>
+                <input
+                  type="text"
+                  value={analytics.topLocations}
+                  onChange={handleAnalyticsChange("topLocations")}
+                  placeholder="e.g., US 40%, Canada 20%"
+                  className="w-full h-9 px-3 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+              <div className="col-span-2 space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">Notes</label>
+                <textarea
+                  value={analytics.notes}
+                  onChange={handleAnalyticsChange("notes")}
+                  placeholder="Additional observations..."
+                  rows={2}
+                  className="w-full px-3 py-2 rounded-md border border-input bg-background text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-y"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button size="sm" onClick={saveAnalytics}>
+                Save Analytics
+              </Button>
+            </div>
+          </div>
+
           {/* Submitted */}
           <div className="pt-4 border-t border-border">
             <p className="text-sm text-muted-foreground">
@@ -514,6 +678,27 @@ function SubmissionDetailModal({ submission, onClose, onUpdateStatus }) {
           </div>
         </div>
       </div>
+
+      {/* Image Lightbox */}
+      {selectedImage && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/80"
+          onClick={() => setSelectedImage(null)}
+        >
+          <button
+            className="absolute top-4 right-4 p-2 text-white hover:bg-white/20 rounded-lg transition-colors"
+            onClick={() => setSelectedImage(null)}
+          >
+            <XCircle className="w-8 h-8" />
+          </button>
+          <img
+            src={selectedImage.dataUrl}
+            alt={selectedImage.name || "Analytics screenshot"}
+            className="max-w-full max-h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

@@ -123,7 +123,7 @@ export function AmbassadorPreboardingForm() {
       otherContentType: formData.otherContentType,
       socialMediaLinks: formData.socialMediaLinks,
       followerCount: formData.followerCount,
-      analyticsFiles: formData.analyticsFiles.map((f) => f.name),
+      analyticsFiles: formData.analyticsFiles,
     });
 
     setIsSubmitting(false);

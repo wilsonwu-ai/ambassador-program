@@ -109,6 +109,14 @@ export function SubmissionsProvider({ children }) {
     localStorage.setItem("snappy_submissions", JSON.stringify(updated));
   };
 
+  const updateSubmissionAnalytics = (id, analytics) => {
+    const updated = submissions.map((sub) =>
+      sub.id === id ? { ...sub, analytics } : sub
+    );
+    setSubmissions(updated);
+    localStorage.setItem("snappy_submissions", JSON.stringify(updated));
+  };
+
   const deleteSubmission = (id) => {
     const updated = submissions.filter((sub) => sub.id !== id);
     setSubmissions(updated);
@@ -117,7 +125,7 @@ export function SubmissionsProvider({ children }) {
 
   return (
     <SubmissionsContext.Provider
-      value={{ submissions, addSubmission, updateSubmissionStatus, deleteSubmission }}
+      value={{ submissions, addSubmission, updateSubmissionStatus, updateSubmissionAnalytics, deleteSubmission }}
     >
       {children}
     </SubmissionsContext.Provider>

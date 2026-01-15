@@ -2,6 +2,20 @@ import { useState, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { Upload, X, Image } from "lucide-react";
 
+const fileToBase64 = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve({
+      name: file.name,
+      size: file.size,
+      type: file.type,
+      dataUrl: reader.result,
+    });
+    reader.onerror = (error) => reject(error);
+  });
+};
+
 export function FileUpload({
   className,
   label,
@@ -16,9 +30,10 @@ export function FileUpload({
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef(null);
 
-  const handleFiles = (newFiles) => {
+  const handleFiles = async (newFiles) => {
     const fileArray = Array.from(newFiles);
-    const updatedFiles = [...files, ...fileArray];
+    const filesWithData = await Promise.all(fileArray.map(fileToBase64));
+    const updatedFiles = [...files, ...filesWithData];
     setFiles(updatedFiles);
     onChange?.(updatedFiles);
   };
