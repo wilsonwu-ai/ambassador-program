@@ -11,6 +11,12 @@ const PARTNER_LOGOS = [
   { name: "Ajisen Ramen", src: "/ambassador-program/partners/ajisen.png" },
   { name: "Dairy Queen", src: "/ambassador-program/partners/dq.png" },
   { name: "168 Sushi", src: "/ambassador-program/partners/168sushi.png" },
+  { name: "Big Way", src: "/ambassador-program/partners/bigway.png" },
+  { name: "Bingz", src: "/ambassador-program/partners/bingz.png" },
+  { name: "Daldongnae", src: "/ambassador-program/partners/daldongnae.png" },
+  { name: "Presotea", src: "/ambassador-program/partners/presotea.png" },
+  { name: "Chungchun", src: "/ambassador-program/partners/chungchun.png" },
+  { name: "I Am Pho", src: "/ambassador-program/partners/iampho.png" },
 ];
 
 const PROCESS_STEPS = [
@@ -22,7 +28,7 @@ const PROCESS_STEPS = [
   {
     icon: Search,
     title: "Browse Opportunities",
-    description: "Access ongoing content opportunities with 1,000+ restaurant partners. Find collaborations that match your style and audience.",
+    description: "Access ongoing content opportunities with 4,000+ restaurant partners across 5 countries. Find collaborations that match your style and audience.",
   },
   {
     icon: Rocket,
@@ -64,7 +70,7 @@ const Index = () => {
               Join Our Creator Partnership Program
             </h2>
             <p className="text-muted-foreground text-lg max-w-3xl mx-auto">
-              The Snappy Partnership Program connects creators of all sizes with over 1,000 restaurant clients looking for authentic, high-quality content. Whether you're just starting out or an established creator, Snappy provides real opportunities to create, collaborate, and grow.
+              The Snappy Partnership Program connects creators of all sizes with over 4,000 restaurant partners across 5 countries looking for authentic, high-quality content. Whether you're just starting out or an established creator, Snappy provides real opportunities to create, collaborate, and grow.
             </p>
           </div>
         </section>
@@ -100,23 +106,29 @@ const Index = () => {
         <section className="py-12 px-4 overflow-hidden">
           <div className="container max-w-5xl mx-auto">
             <h3 className="text-xl md:text-2xl font-bold text-center mb-2">
-              1,000+ Restaurant Partners
+              4,000+ Restaurant Partners Across 5 Countries
             </h3>
             <p className="text-muted-foreground text-center mb-8">
               Join creators working with brands like these
             </p>
 
-            <div className="relative">
+            {/* Carousel Container */}
+            <div className="relative overflow-hidden">
+              {/* Gradient Overlays */}
+              <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+              <div className="absolute right-0 top-0 bottom-0 w-24 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+
+              {/* Scrolling Track */}
               <div className="flex animate-scroll">
                 {[...PARTNER_LOGOS, ...PARTNER_LOGOS].map((partner, index) => (
                   <div
                     key={index}
-                    className="flex-shrink-0 mx-4 w-32 h-20 bg-white rounded-lg border border-border flex items-center justify-center p-3 shadow-sm"
+                    className="flex-shrink-0 mx-3 w-36 h-24 bg-white rounded-xl border border-border/50 flex items-center justify-center p-4 shadow-sm hover:shadow-md transition-shadow duration-300"
                   >
                     <img
                       src={partner.src}
                       alt={partner.name}
-                      className="max-w-full max-h-full object-contain"
+                      className="max-w-full max-h-full object-contain filter grayscale hover:grayscale-0 transition-all duration-300"
                       onError={(e) => {
                         e.target.style.display = 'none';
                         e.target.parentElement.innerHTML = `<span class="text-xs text-muted-foreground font-medium text-center">${partner.name}</span>`;
