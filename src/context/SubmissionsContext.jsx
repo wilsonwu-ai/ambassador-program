@@ -1,8 +1,17 @@
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import {
+  getAllSubmissions,
+  addSubmission as addSubmissionToFirebase,
+  updateSubmissionStatus as updateStatusInFirebase,
+  updateSubmissionAnalytics as updateAnalyticsInFirebase,
+  deleteSubmission as deleteFromFirebase,
+  subscribeToSubmissions,
+  syncLocalToFirebase,
+} from "../services/firestoreService";
 
 const SubmissionsContext = createContext(null);
 
-// Sample data for demonstration
+// Sample data for demonstration (used as fallback)
 const SAMPLE_SUBMISSIONS = [
   {
     id: "1",
@@ -73,59 +82,228 @@ const SAMPLE_SUBMISSIONS = [
 
 export function SubmissionsProvider({ children }) {
   const [submissions, setSubmissions] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [syncStatus, setSyncStatus] = useState("idle"); // idle, syncing, synced, error
 
+  // Monitor online status
   useEffect(() => {
-    // Load submissions from localStorage or use sample data
-    const savedSubmissions = localStorage.getItem("snappy_submissions");
-    if (savedSubmissions) {
-      setSubmissions(JSON.parse(savedSubmissions));
-    } else {
-      // Initialize with sample data
-      setSubmissions(SAMPLE_SUBMISSIONS);
-      localStorage.setItem("snappy_submissions", JSON.stringify(SAMPLE_SUBMISSIONS));
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  // Save to localStorage as backup
+  const saveToLocalStorage = useCallback((data) => {
+    try {
+      localStorage.setItem("snappy_submissions", JSON.stringify(data));
+    } catch (err) {
+      console.error("Error saving to localStorage:", err);
     }
   }, []);
 
-  const addSubmission = (submission) => {
+  // Load from localStorage
+  const loadFromLocalStorage = useCallback(() => {
+    try {
+      const saved = localStorage.getItem("snappy_submissions");
+      return saved ? JSON.parse(saved) : null;
+    } catch (err) {
+      console.error("Error loading from localStorage:", err);
+      return null;
+    }
+  }, []);
+
+  // Initial load and real-time subscription
+  useEffect(() => {
+    let unsubscribe = null;
+
+    const initializeData = async () => {
+      setIsLoading(true);
+      setError(null);
+
+      try {
+        // Try to sync any local submissions to Firebase first
+        const localSubmissions = loadFromLocalStorage();
+        if (localSubmissions && localSubmissions.length > 0) {
+          setSyncStatus("syncing");
+          try {
+            await syncLocalToFirebase(localSubmissions);
+            setSyncStatus("synced");
+          } catch (syncError) {
+            console.warn("Could not sync local submissions to Firebase:", syncError);
+            setSyncStatus("error");
+          }
+        }
+
+        // Set up real-time listener for Firebase
+        unsubscribe = subscribeToSubmissions((firebaseSubmissions) => {
+          if (firebaseSubmissions.length > 0) {
+            setSubmissions(firebaseSubmissions);
+            saveToLocalStorage(firebaseSubmissions); // Keep localStorage as backup
+          } else {
+            // No data in Firebase, use local or sample data
+            const localData = loadFromLocalStorage();
+            if (localData && localData.length > 0) {
+              setSubmissions(localData);
+            } else {
+              setSubmissions(SAMPLE_SUBMISSIONS);
+              saveToLocalStorage(SAMPLE_SUBMISSIONS);
+            }
+          }
+          setIsLoading(false);
+        });
+      } catch (err) {
+        console.error("Error initializing submissions:", err);
+        setError(err.message);
+
+        // Fallback to localStorage
+        const localData = loadFromLocalStorage();
+        if (localData && localData.length > 0) {
+          setSubmissions(localData);
+        } else {
+          setSubmissions(SAMPLE_SUBMISSIONS);
+          saveToLocalStorage(SAMPLE_SUBMISSIONS);
+        }
+        setIsLoading(false);
+      }
+    };
+
+    initializeData();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [loadFromLocalStorage, saveToLocalStorage]);
+
+  // Add submission - saves to both Firebase and localStorage
+  const addSubmission = async (submission) => {
+    const tempId = Date.now().toString();
     const newSubmission = {
       ...submission,
-      id: Date.now().toString(),
+      id: tempId,
       submittedAt: new Date().toISOString(),
       status: "pending",
     };
-    // Read directly from localStorage to avoid race conditions
-    const currentSubmissions = JSON.parse(localStorage.getItem("snappy_submissions") || "[]");
-    const updated = [newSubmission, ...currentSubmissions];
+
+    // Optimistically add to state and localStorage
+    const updated = [newSubmission, ...submissions];
     setSubmissions(updated);
-    localStorage.setItem("snappy_submissions", JSON.stringify(updated));
-    return newSubmission;
+    saveToLocalStorage(updated);
+
+    try {
+      // Save to Firebase
+      const firebaseSubmission = await addSubmissionToFirebase(submission);
+
+      // Update the submission with Firebase ID
+      const finalUpdated = updated.map(sub =>
+        sub.id === tempId ? { ...sub, id: firebaseSubmission.id } : sub
+      );
+      setSubmissions(finalUpdated);
+      saveToLocalStorage(finalUpdated);
+
+      return firebaseSubmission;
+    } catch (err) {
+      console.error("Error saving to Firebase, kept in localStorage:", err);
+      // Data is still in localStorage, will sync when online
+      return newSubmission;
+    }
   };
 
-  const updateSubmissionStatus = (id, status) => {
+  // Update submission status
+  const updateSubmissionStatus = async (id, status) => {
+    // Optimistically update state
     const updated = submissions.map((sub) =>
       sub.id === id ? { ...sub, status } : sub
     );
     setSubmissions(updated);
-    localStorage.setItem("snappy_submissions", JSON.stringify(updated));
+    saveToLocalStorage(updated);
+
+    try {
+      await updateStatusInFirebase(id, status);
+    } catch (err) {
+      console.error("Error updating status in Firebase:", err);
+      // Data is still in localStorage
+    }
   };
 
-  const updateSubmissionAnalytics = (id, analytics) => {
+  // Update submission analytics
+  const updateSubmissionAnalytics = async (id, analytics) => {
+    // Optimistically update state
     const updated = submissions.map((sub) =>
       sub.id === id ? { ...sub, analytics } : sub
     );
     setSubmissions(updated);
-    localStorage.setItem("snappy_submissions", JSON.stringify(updated));
+    saveToLocalStorage(updated);
+
+    try {
+      await updateAnalyticsInFirebase(id, analytics);
+    } catch (err) {
+      console.error("Error updating analytics in Firebase:", err);
+      // Data is still in localStorage
+    }
   };
 
-  const deleteSubmission = (id) => {
+  // Delete submission
+  const deleteSubmission = async (id) => {
+    // Optimistically remove from state
     const updated = submissions.filter((sub) => sub.id !== id);
     setSubmissions(updated);
-    localStorage.setItem("snappy_submissions", JSON.stringify(updated));
+    saveToLocalStorage(updated);
+
+    try {
+      await deleteFromFirebase(id);
+    } catch (err) {
+      console.error("Error deleting from Firebase:", err);
+      // Already removed from localStorage
+    }
+  };
+
+  // Manual sync function
+  const syncNow = async () => {
+    if (!isOnline) {
+      return { success: false, message: "No internet connection" };
+    }
+
+    setSyncStatus("syncing");
+    try {
+      const localData = loadFromLocalStorage();
+      if (localData && localData.length > 0) {
+        const syncedCount = await syncLocalToFirebase(localData);
+        setSyncStatus("synced");
+        return { success: true, message: `Synced ${syncedCount} submissions` };
+      }
+      setSyncStatus("synced");
+      return { success: true, message: "Nothing to sync" };
+    } catch (err) {
+      setSyncStatus("error");
+      return { success: false, message: err.message };
+    }
   };
 
   return (
     <SubmissionsContext.Provider
-      value={{ submissions, addSubmission, updateSubmissionStatus, updateSubmissionAnalytics, deleteSubmission }}
+      value={{
+        submissions,
+        addSubmission,
+        updateSubmissionStatus,
+        updateSubmissionAnalytics,
+        deleteSubmission,
+        isLoading,
+        error,
+        isOnline,
+        syncStatus,
+        syncNow,
+      }}
     >
       {children}
     </SubmissionsContext.Provider>

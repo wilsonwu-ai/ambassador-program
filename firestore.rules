@@ -1,0 +1,25 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Submissions collection
+    // Anyone can create a submission (public form)
+    // Only authenticated staff can read, update, or delete
+    match /submissions/{submissionId} {
+      allow create: if true;
+      allow read, update, delete: if true; // For development - restrict in production
+    }
+
+    // Audit log collection
+    // Only system can write, authenticated staff can read
+    match /audit_log/{logId} {
+      allow create: if true;
+      allow read: if true; // For development - restrict in production
+      allow update, delete: if false;
+    }
+
+    // Staff collection
+    match /staff/{staffId} {
+      allow read, write: if true; // For development - restrict in production
+    }
+  }
+}

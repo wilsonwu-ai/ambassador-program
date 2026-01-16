@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect } from "react";
+import { logStaffActivity } from "../services/firestoreService";
 
 const AuthContext = createContext(null);
 
@@ -15,7 +16,10 @@ export function AuthProvider({ children }) {
     // Check for existing session
     const savedUser = localStorage.getItem("snappy_staff_user");
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      const userData = JSON.parse(savedUser);
+      setUser(userData);
+      // Log activity to Firebase
+      logStaffActivity(userData.email, "session_restored").catch(console.error);
     }
     setIsLoading(false);
   }, []);
@@ -36,13 +40,30 @@ export function AuthProvider({ children }) {
       };
       setUser(userData);
       localStorage.setItem("snappy_staff_user", JSON.stringify(userData));
+
+      // Log login activity to Firebase
+      try {
+        await logStaffActivity(userData.email, "logged_in");
+      } catch (err) {
+        console.error("Error logging staff activity:", err);
+      }
+
       return { success: true };
     }
 
     return { success: false, error: "Invalid email or password" };
   };
 
-  const logout = () => {
+  const logout = async () => {
+    // Log logout activity to Firebase
+    if (user) {
+      try {
+        await logStaffActivity(user.email, "logged_out");
+      } catch (err) {
+        console.error("Error logging staff activity:", err);
+      }
+    }
+
     setUser(null);
     localStorage.removeItem("snappy_staff_user");
   };

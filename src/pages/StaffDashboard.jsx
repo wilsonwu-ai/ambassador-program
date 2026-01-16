@@ -3,11 +3,11 @@ import { useAuth } from "@/context/AuthContext";
 import { useSubmissions } from "@/context/SubmissionsContext";
 import { SubmissionsTable } from "@/components/staff/SubmissionsTable";
 import { Button } from "@/components/ui/Button";
-import { LogOut, Users, Clock, CheckCircle, XCircle } from "lucide-react";
+import { LogOut, Users, Clock, CheckCircle, XCircle, Cloud, CloudOff, RefreshCw, Loader2 } from "lucide-react";
 
 export default function StaffDashboard() {
   const { user, logout } = useAuth();
-  const { submissions } = useSubmissions();
+  const { submissions, isLoading, isOnline, syncStatus, syncNow } = useSubmissions();
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -41,6 +41,35 @@ export default function StaffDashboard() {
             </div>
 
             <div className="flex items-center gap-4">
+              {/* Sync Status Indicator */}
+              <div className="flex items-center gap-2">
+                {isOnline ? (
+                  <div className="flex items-center gap-1.5 text-green-600">
+                    <Cloud className="w-4 h-4" />
+                    <span className="text-xs hidden sm:inline">Synced</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1.5 text-yellow-600">
+                    <CloudOff className="w-4 h-4" />
+                    <span className="text-xs hidden sm:inline">Offline</span>
+                  </div>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={syncNow}
+                  disabled={!isOnline || syncStatus === "syncing"}
+                  className="h-8 w-8 p-0"
+                  title="Sync now"
+                >
+                  {syncStatus === "syncing" ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
+
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-medium">{user?.name}</p>
                 <p className="text-xs text-muted-foreground">{user?.email}</p>
@@ -116,7 +145,14 @@ export default function StaffDashboard() {
         </div>
 
         {/* Submissions Table */}
-        <SubmissionsTable />
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            <span className="ml-3 text-muted-foreground">Loading submissions...</span>
+          </div>
+        ) : (
+          <SubmissionsTable />
+        )}
       </main>
 
       {/* Footer */}
